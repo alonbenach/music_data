@@ -5,7 +5,7 @@ import pandas as pd
 
 # %%
 # Set the start and end date for the dictionary
-start_date = date(2022, 12, 1)
+start_date = date(2022, 1, 1)
 end_date = date(2022, 12, 31)
 daterange = pd.date_range(start_date, end_date, freq="W").strftime("%Y-%m-%d").tolist()
 # %%
