@@ -33,135 +33,220 @@ for date in daterange:
     }
 for key in charts:
     charts[key] = pd.DataFrame.from_dict(charts[key])
+    charts[key].set_index("rank")
+
 # %%
+# Custom HTML/CSS/JavaScript code for the impressive header
+header_html = """
+    <style>
+        @keyframes swirl {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
 
-# from streamlit_jupyter
-# import StreamlitPatcher, tqdm StreamlitPatcher().jupyter()
-# -
+        @keyframes flash {
+            0% { color: red; }
+            16.66% { color: orange; }
+            33.33% { color: yellow; }
+            50% { color: green; }
+            66.66% { color: blue; }
+            83.33% { color: indigo; }
+            100% { color: violet; }
+        }
 
-st.write("Here's our first attempt at using data to create a table:")
-st.write(
-    pd.DataFrame({"first column": [1, 2, 3, 4], "second column": [10, 20, 30, 40]})
-)
+        .impressive-header {
+            text-align: center;
+            font-size: 36px;
+            font-weight: bold;
+            animation: swirl 5s ease-in-out, flash 2s infinite;
+        }
+    </style>
+    <script>
+        let header = document.querySelector('.impressive-header');
 
-st.markdown("*Streamlit* is **really** ***cool***.")
-st.markdown(
-    """
-    :red[Streamlit] :orange[can] :green[write] :blue[text] :violet[in]
-    :gray[pretty] :rainbow[colors]."""
-)
-st.markdown(
-    "Here's a bouquet &mdash;\
-            :tulip::cherry_blossom::rose::hibiscus::sunflower::blossom:"
-)
-
-multi = """If you end a line with two spaces,
-a soft return is used for the next line.
-
-Two (or more) newline characters in a row will result in a hard return.
+        header.addEventListener("mouseover", function() {
+            header.style.animation = 'swirl 5s ease-in-out';
+            header.addEventListener('animationend', function() {
+                header.style.animation = 'flash 2s infinite';
+            }, {once: true});
+        });
+    </script>
+    <div class="impressive-header">Here is Billboard 100 for 2022 - Have Fun Exploring the Data!</div>
 """
-st.markdown(multi)
 
+# Display the impressive header
+st.markdown(header_html, unsafe_allow_html=True)
 
-# +
-chart_data = pd.DataFrame(np.random.randn(20, 3), columns=["a", "b", "c"])
+# %%
+date_list = list(charts.keys())
+selected_date = st.selectbox("Select a date:", date_list)
 
-st.line_chart(chart_data)
+st.write(f"Table for {selected_date}")
+st.write(charts[selected_date])
 
-# +
-map_data = pd.DataFrame(
-    np.random.randn(1000, 2) / [50, 50] + [37.76, -122.4], columns=["lat", "lon"]
+# %%
+# Create a line plot for a song's popularity through time for a selected song
+# Combine dataframes from all dates into one dataframe
+all_data = pd.concat(
+    (df.assign(date=date) for date, df in charts.items()), ignore_index=True
 )
 
-st.map(map_data)
-# -
+# Get the list of unique songs
+song_list = all_data["song"].unique()
 
+# Allow the user to select a song from the dropdown menu
+selected_song = st.selectbox("Select a song:", song_list)
 
-x = st.slider("x")  # 👈 this is a widget
-st.write(x, "squared is", x * x)
+# Filter data for the selected song
+selected_song_data = all_data[all_data["song"] == selected_song]
 
-
-if st.checkbox("Show dataframe"):
-    chart_data = pd.DataFrame(np.random.randn(20, 3), columns=["a", "b", "c"])
-
-    chart_data
-
-
-df = pd.DataFrame({"first column": [1, 2, 3, 4], "second column": [10, 20, 30, 40]})
-
-option = st.selectbox("Which number do you like best?", df["first column"])
-
-"You selected: ", option
-
-
-# Add a selectbox to the sidebar:
-add_selectbox = st.sidebar.selectbox(
-    "How would you like to be contacted?", ("Email", "Home phone", "Mobile phone")
+# Create a line chart using Plotly Express
+fig = px.line(
+    selected_song_data,
+    x="date",
+    y="rank",
+    title=f'Billboard100 Ranks for {selected_song} ({selected_song_data["artist"].iloc[0]})',
+    labels={"date": "Date", "rank": "Rank"},
 )
 
-# Add a slider to the sidebar:
-add_slider = st.sidebar.slider("Select a range of values", 0.0, 100.0, (25.0, 75.0))
-
-
-st.markdown("# Main page 🎈")
-st.sidebar.markdown("# Main page 🎈")
-
-
-st.markdown("# Page 2 ❄️")
-st.sidebar.markdown("# Page 2 ❄️")
-
-
-# Add histogram data
-x1 = np.random.randn(200) - 2
-x2 = np.random.randn(200)
-x3 = np.random.randn(200) + 2
-
-# Group data together
-hist_data = [x1, x2, x3]
-
-group_labels = ["Group 1", "Group 2", "Group 3"]
-
-# Create distplot with custom bin_size
-fig = ff.create_distplot(hist_data, group_labels, bin_size=[0.1, 0.25, 0.5])
-
-# Plot!
-st.plotly_chart(fig, use_container_width=True)
-
-df = px.data.gapminder()
-
-fig = px.scatter(
-    df.query("year==2007"),
-    x="gdpPercap",
-    y="lifeExp",
-    size="pop",
-    color="continent",
-    hover_name="country",
-    log_x=True,
-    size_max=60,
+# Display the chart using st.plotly_chart
+st.plotly_chart(fig)
+# %%
+# Combine dataframes from all dates into one dataframe
+all_data = pd.concat(
+    (df.assign(date=date) for date, df in charts.items()), ignore_index=True
 )
 
-tab1, tab2 = st.tabs(["Streamlit theme (default)", "Plotly native theme"])
-with tab1:
-    # Use the Streamlit theme.
-    # This is the default. So you can also omit the theme argument.
-    st.plotly_chart(fig, theme="streamlit", use_container_width=True)
-with tab2:
-    # Use the native Plotly theme.
-    st.plotly_chart(fig, theme=None, use_container_width=True)
+# Get the list of unique songs
+unique_songs = all_data["song"].unique()
 
-
-st.subheader("Define a custom colorscale")
-df = px.data.iris()
-fig = px.scatter(
-    df,
-    x="sepal_width",
-    y="sepal_length",
-    color="sepal_length",
-    color_continuous_scale="reds",
+# Allow the user to select up to 4 songs from the multiselect dropdown menu
+selected_songs = st.multiselect(
+    "Select songs to compare:",
+    unique_songs,
+    default=unique_songs[:4],
+    key="song_selection",
 )
 
-tab1, tab2 = st.tabs(["Streamlit theme (default)", "Plotly native theme"])
-with tab1:
-    st.plotly_chart(fig, theme="streamlit", use_container_width=True)
-with tab2:
-    st.plotly_chart(fig, theme=None, use_container_width=True)
+# Filter data for the selected songs
+selected_songs_data = all_data[all_data["song"].isin(selected_songs)]
+
+# Create a line plot using Plotly Express
+fig = px.line(
+    selected_songs_data,
+    x="date",
+    y="rank",
+    color="song",
+    title="Ranking Over Time for Selected Songs",
+    labels={"date": "Date", "rank": "Rank", "song": "Song"},
+)
+
+# Display the chart using st.plotly_chart
+st.plotly_chart(fig)
+
+# %%
+### Create a barplot for all songs per top performers
+top_artists = all_data["artist"].value_counts().reset_index()
+top_artists.columns = ["Artist", "Number of Appearances"]
+
+fig = px.bar(
+    top_artists,
+    x="Number of Appearances",
+    y="Artist",
+    orientation="h",
+    title="Top Artists in Billboard100",
+    labels={"Number of Appearances": "Number of Appearances"},
+)
+st.plotly_chart(fig)
+# %%
+### Create a heatmap to visualize the rankings of artists over time
+# Combine dataframes from all dates into one dataframe
+all_data = pd.concat(
+    (df.assign(date=date) for date, df in charts.items()), ignore_index=True
+)
+
+# Get the list of unique months
+unique_months = pd.to_datetime(all_data["date"]).dt.to_period("M").unique()
+
+# Allow the user to select a month from the dropdown menu
+selected_month = st.selectbox("Select a month:", unique_months)
+
+# Filter data for the selected month
+selected_month_data = all_data[
+    pd.to_datetime(all_data["date"]).dt.to_period("M") == selected_month
+]
+
+# Get the top 10 ranked artists of the selected month
+top_10_artists = (
+    selected_month_data.groupby("artist")["rank"].mean().sort_values().head(10).index
+)
+
+# Filter data for the top 10 ranked artists
+selected_month_data_top_10 = selected_month_data[
+    selected_month_data["artist"].isin(top_10_artists)
+]
+
+# Create a heatmap using Plotly Express
+heatmap_data = selected_month_data_top_10.pivot_table(
+    index="artist", columns="date", values="rank", aggfunc="mean"
+)
+
+fig = px.imshow(
+    heatmap_data,
+    labels={"color": "Rank"},
+    x=heatmap_data.columns,
+    y=heatmap_data.index,
+    title=f"Top 10 Ranked Artists in {selected_month}",
+    color_continuous_scale="Viridis",
+)
+
+# Make each vertical line wider
+fig.update_traces(dx=0.5)
+
+st.plotly_chart(fig)
+# %%
+### Create a lineplot for all songs by artist
+# Combine dataframes from all dates into one dataframe
+all_data = pd.concat(
+    (df.assign(date=date) for date, df in charts.items()), ignore_index=True
+)
+
+# Get the list of unique artists
+unique_artists = all_data["artist"].unique()
+
+# Allow the user to select an artist from the dropdown menu
+selected_artist = st.selectbox("Select an artist:", unique_artists)
+
+# Filter data for the selected artist
+selected_artist_data = all_data[all_data["artist"] == selected_artist]
+
+# Create a line plot using Plotly Express
+fig = px.line(
+    selected_artist_data,
+    x="date",
+    y="rank",
+    color="song",
+    title=f"Ranking Over Time for Songs by {selected_artist}",
+    labels={"date": "Date", "rank": "Rank", "song": "Song"},
+)
+
+# Display the chart using st.plotly_chart
+st.plotly_chart(fig)
+
+########
+# Display a sidebar with a text input for users to enter their email
+user_email = st.sidebar.text_input(
+    "Enter your email to be notified when next year's charts are available:"
+)
+
+# Store the user's email in a file or database when submitted
+if st.sidebar.button("Submit"):
+    if user_email:
+        # Save the email to a file, database, or send it to your backend for processing
+        with open("user_emails.txt", "a") as f:
+            f.write(user_email + "\n")
+        st.sidebar.success(
+            "Thank you! We'll notify you when next year's charts are available."
+        )
+    else:
+        st.sidebar.warning("Please enter a valid email address.")
