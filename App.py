@@ -299,7 +299,7 @@ st.sidebar.markdown(
 - [Charts](#charts)
 - [One Song Rankings](#onesong)
 - [Compare Song Rankings](#multisong)
-- [Top Artists by of Entries](#topartists)
+- [Top Artists by # of Entries](#topartists)
 - [Top 10 Artists by Month](#top10)
 - [All Songs by Artist](#allsongs)
 """
