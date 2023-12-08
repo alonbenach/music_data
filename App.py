@@ -3,62 +3,113 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 import numpy as np
+from datetime import datetime, timedelta
 
 # %%
 # Load the data
 excel_file_name = "output_file.xlsx"
 # Read the Excel file into a dictionary of dataframes
 charts = pd.read_excel(excel_file_name, sheet_name=None)
+#######################################################################################
 # %%
-# Custom HTML/CSS/JavaScript code for the impressive header
+### HEADER
+# Add an HTML anchor to link to this section
+st.markdown("<a name='header'></a>", unsafe_allow_html=True)
+
+# Present simple header
 header_html = """
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond&display=swap" rel="stylesheet">
     <style>
-        @keyframes swirl {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        @keyframes flash {
-            0% { color: red; }
-            16.66% { color: orange; }
-            33.33% { color: yellow; }
-            50% { color: green; }
-            66.66% { color: blue; }
-            83.33% { color: indigo; }
-            100% { color: violet; }
-        }
-
-        .impressive-header {
-            text-align: center;
+        .header-text {
+            font-family: 'EB Garamond', serif;
             font-size: 36px;
             font-weight: bold;
-            animation: swirl 5s ease-in-out, flash 2s infinite;
+        }
+        .paragraph-text {
+            font-family: 'EB Garamond', serif;
+            font-size: 18px;
         }
     </style>
-    <script>
-        let header = document.querySelector('.impressive-header');
+    <div style="display: flex; align-items: center;">
+        <h1 class="header-text">Billboard 100 Analysis - 2022</h1>
+    </div>
+    <div style="display: flex; align-items: center;">
+        <p class="paragraph-text">Experience the 2022 Billboard 100 journey. 
+        Dive into weekly charts, discover top songs, and track the rise and fall of artists 
+        throughout the year with real data from the www.billboard.com.</p>
+    </div>
 
-        header.addEventListener("mouseover", function() {
-            header.style.animation = 'swirl 5s ease-in-out';
-            header.addEventListener('animationend', function() {
-                header.style.animation = 'flash 2s infinite';
-            }, {once: true});
-        });
-    </script>
-    <div class="impressive-header">Here is Billboard 100 for 2022 - Have Fun Exploring the Data!</div>
 """
 
-# Display the impressive header
+# Display the header
 st.markdown(header_html, unsafe_allow_html=True)
 
+
+#######################################################################################
 # %%
+# Add an HTML anchor to link to this section
+st.markdown("<a name='charts'></a>", unsafe_allow_html=True)
+
+# Placeholder for Lineplot for Songs by Artist
+st.write("### Present the Weekly Chart by a Selected Date")
+
+
+# Function to check if the given date is a Sunday
+def is_sunday(date):
+    return (
+        date.weekday() == 6
+    )  # 6 corresponds to Sunday in Python's datetime module (0 is Monday)
+
+
+# Function to adjust the selected date to the previous Sunday if necessary
+def adjust_to_previous_sunday(selected_date):
+    # Check if the selected date is a Sunday, if not, find the previous Sunday
+    if not is_sunday(selected_date):
+        days_to_subtract = (
+            selected_date.weekday() + 1
+        )  # Calculate the days to subtract to get to the previous Sunday
+        selected_date -= timedelta(
+            days=days_to_subtract
+        )  # Subtract days to get to the previous Sunday
+    return selected_date
+
+
+# Function to limit selectable dates based on date_list and adjust if needed
+def select_date_from_list(date_list):
+    min_date = datetime.strptime(min(date_list), "%Y-%m-%d")
+    max_date = datetime.strptime(max(date_list), "%Y-%m-%d")
+
+    selected_date = st.date_input(
+        "Select a date to present",
+        min_value=min_date,
+        max_value=max_date,
+        value=min_date,
+    )
+    selected_date = adjust_to_previous_sunday(selected_date)
+
+    return selected_date
+
+
+# Assuming date_list is defined as list(charts.keys())
 date_list = list(charts.keys())
-selected_date = st.selectbox("Select a date:", date_list)
+selected_date = select_date_from_list(date_list)
+selected_data = charts[selected_date.strftime("%Y-%m-%d")]
 
-st.write(f"Table for {selected_date}")
-st.write(charts[selected_date])
+# Set the 'rank' column as the index
+selected_data.set_index("rank", inplace=True)
 
+st.write(
+    f"""Top 100 list for the selected week (week beginning on Sunday {selected_date}) :"""
+)
+st.write(selected_data)
 # %%
+
+# Add an HTML anchor to link to this section
+st.markdown("<a name='onesong'></a>", unsafe_allow_html=True)
+
+# Placeholder for Lineplot for Songs by Artist
+st.write("### Present the Ranking of a Song over Time")
+
 # Create a line plot for a song's popularity through time for a selected song
 # Combine dataframes from all dates into one dataframe
 all_data = pd.concat(
@@ -86,6 +137,11 @@ fig = px.line(
 # Display the chart using st.plotly_chart
 st.plotly_chart(fig)
 # %%
+# Add an HTML anchor to link to this section
+st.markdown("<a name='multisong'></a>", unsafe_allow_html=True)
+
+# Placeholder for Lineplot for Songs by Artist
+st.write("### Compare the Rankings of a Multiple Songs over Time")
 # Combine dataframes from all dates into one dataframe
 all_data = pd.concat(
     (df.assign(date=date) for date, df in charts.items()), ignore_index=True
@@ -119,6 +175,12 @@ fig = px.line(
 st.plotly_chart(fig)
 
 # %%
+# Add an HTML anchor to link to this section
+st.markdown("<a name='topartists'></a>", unsafe_allow_html=True)
+
+# Placeholder for Lineplot for Songs by Artist
+st.write("### See the Number of Appearances for Top Artists in 2022")
+
 ### Create a barplot for all songs per top performers
 top_artists = all_data["artist"].value_counts().reset_index()
 top_artists.columns = ["Artist", "Number of Appearances"]
@@ -133,6 +195,11 @@ fig = px.bar(
 )
 st.plotly_chart(fig)
 # %%
+# Add an HTML anchor to link to this section
+st.markdown("<a name='top10'></a>", unsafe_allow_html=True)
+
+# Placeholder for Lineplot for Songs by Artist
+st.write("### Compare Top 10 Most Played Artists by Month")
 ### Create a heatmap to visualize the rankings of artists over time
 # Combine dataframes from all dates into one dataframe
 all_data = pd.concat(
@@ -179,6 +246,13 @@ fig.update_traces(dx=0.5)
 
 st.plotly_chart(fig)
 # %%
+# Add an HTML anchor to link to this section
+st.markdown("<a name='allsongs'></a>", unsafe_allow_html=True)
+
+# Placeholder for Lineplot for Songs by Artist
+st.write("### Present Rankings of all Songs by an Artist Throughout the Year")
+
+
 ### Create a lineplot for all songs by artist
 # Combine dataframes from all dates into one dataframe
 all_data = pd.concat(
@@ -191,8 +265,14 @@ unique_artists = all_data["artist"].unique()
 # Allow the user to select an artist from the dropdown menu
 selected_artist = st.selectbox("Select an artist:", unique_artists)
 
-# Filter data for the selected artist
-selected_artist_data = all_data[all_data["artist"] == selected_artist]
+
+# Function to filter data for the selected artist and its variations
+def filter_artist_data(artist):
+    return all_data[all_data["artist"].str.contains(artist, case=False)]
+
+
+# Filter data for the selected artist and variations
+selected_artist_data = filter_artist_data(selected_artist)
 
 # Create a line plot using Plotly Express
 fig = px.line(
@@ -207,8 +287,26 @@ fig = px.line(
 # Display the chart using st.plotly_chart
 st.plotly_chart(fig)
 
-########
-# Display a sidebar with a text input for users to enter their email
+###################################SIDEBAR FEATURES###########################################
+# Display an image at the top of the sidebar
+st.sidebar.image("Kozminski.png", width=100)
+
+# Add anchor links to the different plots in your app
+st.sidebar.markdown(
+    """
+### Navigation
+- [Top](#header)
+- [Charts](#charts)
+- [One Song Rankings](#onesong)
+- [Compare Song Rankings](#multisong)
+- [Top Artists by of Entries](#topartists)
+- [Top 10 Artists by Month](#top10)
+- [All Songs by Artist](#allsongs)
+"""
+)
+
+
+# Display a text input for users to enter their email in the sidebar
 user_email = st.sidebar.text_input(
     "Enter your email to be notified when next year's charts are available:"
 )
