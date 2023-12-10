@@ -322,3 +322,16 @@ if st.sidebar.button("Submit"):
         )
     else:
         st.sidebar.warning("Please enter a valid email address.")
+
+# Add project description at the bottom of the sidebar with adjusted style
+st.sidebar.markdown(
+    """
+---
+
+<span style="font-size:smaller; opacity:0.75">
+Created by Filip Sobota, Joanna Bańkowska, and Alon Benach 
+under the supervision of Jacek Mańko, Web Mining course, Kozmiński University 2023.
+</span>
+""",
+    unsafe_allow_html=True,
+)
