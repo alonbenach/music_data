@@ -2,8 +2,7 @@
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-import numpy as np
-from datetime import datetime, timedelta
+from datetime import timedelta
 from collections import defaultdict
 import re
 
