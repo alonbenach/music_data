@@ -1,21 +1,22 @@
 # %%
 import pandas as pd
+import altair as alt
 import plotly.express as px
 import streamlit as st
-from datetime import timedelta
+from datetime import datetime, timedelta
 from collections import defaultdict
 import re
-
+import numpy as np
 
 # %%
 # Load the data
 excel_file_name = "songs_df.xlsx"
 # Read the Excel file into a dictionary of dataframes
 songs_df = pd.read_excel(excel_file_name)
+
 #######################################################################################
 
 
-# Function to extract artists considering different separators
 # Function to extract multiple artists from a single string
 def extract_artists(artist_string):
     # Define a regex pattern to capture various separators
@@ -25,6 +26,115 @@ def extract_artists(artist_string):
     artists = re.split(pattern, artist_string, flags=re.IGNORECASE)
 
     return artists
+
+
+# Function to check if the given date is a Sunday
+def is_sunday(date):
+    return (
+        date.weekday() == 6
+    )  # 6 corresponds to Sunday in Python's datetime module (0 is Monday)
+
+
+# Function to adjust the selected date to the previous Sunday if necessary
+def adjust_to_previous_sunday(selected_date):
+    # Check if the selected date is a Sunday, if not, find the previous Sunday
+    if not is_sunday(selected_date):
+        days_to_subtract = (
+            selected_date.weekday() + 1
+        )  # Calculate days to subtract to get to the previous Sunday
+        selected_date -= timedelta(
+            days=days_to_subtract
+        )  # Subtract days to get to the previous Sunday
+    return selected_date
+
+
+# Function to limit selectable dates based on date_list and adjust if needed
+def select_date_from_list(date_list):
+    min_date = pd.to_datetime(min(date_list))
+    max_date = pd.to_datetime(max(date_list))
+
+    selected_date = st.date_input(
+        "Select a date to present",
+        min_value=min_date,
+        max_value=max_date,
+        value=min_date,
+    )
+    selected_date = adjust_to_previous_sunday(selected_date)
+
+    return selected_date
+
+
+def select_date_range(date_list):
+    min_date = pd.to_datetime(min(date_list))
+    max_date = pd.to_datetime(max(date_list))
+
+    # Display a caption for the date selection
+    st.caption("Select start and end dates")
+
+    start_date = st.date_input(
+        f"Select start date:",
+        min_value=min_date,
+        max_value=max_date,
+        value=min_date,  # Change the default value to the minimum date
+    )
+    start_date = adjust_to_previous_sunday(start_date)
+
+    end_date = st.date_input(
+        f"Select end date:",
+        min_value=min_date,
+        max_value=max_date,
+        value=max_date,  # Change the default value to the maximum date
+    )
+    end_date = adjust_to_previous_sunday(end_date)
+
+    return start_date, end_date
+
+
+def display_longest_ranking_songs(songs_df, selected_start_date, selected_end_date):
+    # Extract the columns corresponding to the selected dates
+    selected_columns = songs_df.loc[
+        :, str(selected_start_date) : str(selected_end_date)
+    ]
+
+    # Create a list of columns including song and artist columns
+    columns_to_display = ["Song", "Artist"] + list(selected_columns.columns)
+
+    # Display the table with the specified columns
+    # st.write(
+    #     f"""Longest Ranking Songs Between {selected_start_date.strftime("%Y-%m-%d")} - {selected_end_date.strftime("%Y-%m-%d")}) :"""
+    # )
+    # st.write(songs_df[columns_to_display])
+
+    # Aggregate non-NA values and count
+    non_na_counts = songs_df[columns_to_display].T.count()
+
+    # Select top 10 songs with the most non-NA values
+    top_10_songs = non_na_counts.sort_values(ascending=False).head(10)
+
+    # Extract song and artist names for the top 10 songs
+    top_10_song_artist = songs_df.loc[top_10_songs.index, ["Song", "Artist"]]
+
+    # Combine Song and Artist columns
+    top_10_song_artist["Combined"] = (
+        top_10_song_artist["Song"] + ", " + top_10_song_artist["Artist"]
+    )
+
+    # Create a DataFrame with top 10 songs and their counts
+    top_10_counts = pd.DataFrame(
+        {"Song": top_10_song_artist["Combined"], "Count": top_10_songs}
+    )
+
+    # Create a bar chart using Altair
+    chart = (
+        alt.Chart(top_10_counts)
+        .mark_bar()
+        .encode(x="Count", y=alt.Y("Song", sort="-x"), tooltip=["Song", "Count"])
+        .properties(title=f"Top 10 Songs with Most Appearances")
+        .configure_axis(labelFontSize=12)
+    )
+
+    # Show the chart using Streamlit's Altair component
+    st.altair_chart(chart, use_container_width=True)
 
 
 # %%
@@ -68,39 +178,6 @@ def main():
     # Placeholder for Lineplot for Songs by Artist
     st.write("### Present the Weekly Chart by a Selected Date")
 
-    # Function to check if the given date is a Sunday
-    def is_sunday(date):
-        return (
-            date.weekday() == 6
-        )  # 6 corresponds to Sunday in Python's datetime module (0 is Monday)
-
-    # Function to adjust the selected date to the previous Sunday if necessary
-    def adjust_to_previous_sunday(selected_date):
-        # Check if the selected date is a Sunday, if not, find the previous Sunday
-        if not is_sunday(selected_date):
-            days_to_subtract = (
-                selected_date.weekday() + 1
-            )  # Calculate days to subtract to get to the previous Sunday
-            selected_date -= timedelta(
-                days=days_to_subtract
-            )  # Subtract days to get to the previous Sunday
-        return selected_date
-
-    # Function to limit selectable dates based on date_list and adjust if needed
-    def select_date_from_list(date_list):
-        min_date = pd.to_datetime(min(date_list))
-        max_date = pd.to_datetime(max(date_list))
-
-        selected_date = st.date_input(
-            "Select a date to present",
-            min_value=min_date,
-            max_value=max_date,
-            value=min_date,
-        )
-        selected_date = adjust_to_previous_sunday(selected_date)
-
-        return selected_date
-
     date_list = songs_df.columns[2:]
     selected_date = select_date_from_list(date_list)
     selected_data = songs_df[["Artist", "Song", selected_date.strftime("%Y-%m-%d")]]
@@ -117,7 +194,7 @@ def main():
         f"""Top 100 list for the selected week (week beginning on Sunday {selected_date.strftime("%Y-%m-%d")}) :"""
     )
     st.write(selected_data)
-    ###########################################################################
+    ############################### PRESENT 1 SONG'S RANKINGS ########################################
     # Add an HTML anchor to link to this section
     st.markdown("<a name='onesong'></a>", unsafe_allow_html=True)
 
@@ -156,7 +233,10 @@ def main():
         end_index = nonzero_indexes[-1]
         plot_data = plot_data.loc[start_index:end_index]
 
-    # Create a line plot using Plotly Express
+    # Replace NA values in 'Rank' column with NaN
+    plot_data["Rank"] = plot_data["Rank"].replace(0, np.nan)
+
+    # Create a line plot using Plotly Express without connecting NA values
     fig = px.line(
         plot_data,
         x="Date",
@@ -165,10 +245,14 @@ def main():
         labels={"Date": "Date", "Rank": "Rank"},
     )
 
-    # Customize x-axis tick labels to show years and months
+    # Filter the data to get only existing (non-NA) ranks for x-axis ticks
+    existing_ranks = plot_data.dropna(subset=["Rank"])
+    existing_dates = existing_ranks["Date"]
+
+    # Customize x-axis tick labels to show years and months for existing dates only
     fig.update_xaxes(
-        tickvals=plot_data["Date"],
-        tickformat="%Y-%m",
+        tickvals=existing_dates,
+        tickformat="%Y-%m-%d",
         tickangle=45,
         title_text="Date",
     )
@@ -176,12 +260,12 @@ def main():
     # Display the chart using st.plotly_chart
     st.plotly_chart(fig)
 
-    # %%
+    ############################### COMPARE SONGS RANKINGS ##################################
     # Add an HTML anchor to link to this section
     st.markdown("<a name='multisong'></a>", unsafe_allow_html=True)
 
     # Placeholder for Lineplot for Songs by Artist
-    st.write("### Compare the Rankings of a Multiple Songs over Time")
+    st.write("### Compare the Rankings of Multiple Songs over Time")
 
     default_songs = songs_df["Song"].unique()[
         :3
@@ -195,6 +279,10 @@ def main():
     if len(selected_songs) > 0:
         # Filter data for the selected songs
         selected_songs_data = songs_df[songs_df["Song"].isin(selected_songs)]
+
+        # Initialize variables to track the first and last existing observations
+        min_date = pd.Timestamp.max
+        max_date = pd.Timestamp.min
 
         # Create an empty DataFrame to store combined plot data
         combined_plot_data = pd.DataFrame(columns=["Date", "Rank", "Song"])
@@ -224,20 +312,19 @@ def main():
             # Convert 'Date' column to datetime format
             plot_data["Date"] = pd.to_datetime(plot_data["Date"])
 
-            # Fill NA values in 'Rank' column with 0
-            plot_data["Rank"].fillna(0, inplace=True)
-
-            # Get indices of non-zero values in 'Rank' column
-            nonzero_indexes = plot_data[plot_data["Rank"] != 0].index
-
-            # Trim the DataFrame to include data between first and last non-zero appearances
-            if len(nonzero_indexes) > 0:
-                start_index = nonzero_indexes[0]
-                end_index = nonzero_indexes[-1]
-                plot_data = plot_data.loc[start_index:end_index]
+            # Fill NA values in 'Rank' column with NaN
+            plot_data["Rank"] = pd.to_numeric(plot_data["Rank"], errors="coerce")
 
             # Append plot data for the current song to combined plot data
             combined_plot_data = combined_plot_data.append(plot_data, ignore_index=True)
+
+            # Update min_date and max_date based on existing observations for the current song
+            song_min_date = plot_data.dropna(subset=["Rank"])["Date"].min()
+            song_max_date = plot_data.dropna(subset=["Rank"])["Date"].max()
+            if song_min_date < min_date:
+                min_date = song_min_date
+            if song_max_date > max_date:
+                max_date = song_max_date
 
         # Create a line plot using Plotly Express for multiple songs comparison
         fig = px.line(
@@ -250,24 +337,20 @@ def main():
         )
 
         # Customize x-axis tick labels to show every second month
-        month_ticks = pd.date_range(
-            start=combined_plot_data["Date"].min(),
-            end=combined_plot_data["Date"].max(),
-            freq="2M",
-        )
+        month_ticks = pd.date_range(start=min_date, end=max_date, freq="2M")
         fig.update_xaxes(
-            tickvals=month_ticks,
-            tickformat="%Y-%m",
-            tickangle=45,
-            title_text="Date",
+            tickvals=month_ticks, tickformat="%Y-%m-%d", tickangle=45, title_text="Date"
         )
+
+        # Set the x-axis range based on the first and last existing observation dates within selected songs
+        fig.update_xaxes(range=[min_date, max_date])
 
         # Display the chart using st.plotly_chart
         st.plotly_chart(fig)
     else:
         st.write("Please select one or more songs.")
 
-    # %%
+    ############################# Number of Appearances for Top Artists #############################
     # Add an HTML anchor to link to this section
     st.markdown("<a name='topartists'></a>", unsafe_allow_html=True)
 
@@ -305,51 +388,7 @@ def main():
     # Display the chart using st.plotly_chart
     st.plotly_chart(fig)
 
-    # # can't get this part to work. leaving it here for future attempts outside the scope of this course
-    # # Add an HTML anchor to link to this section
-    # st.markdown("<a name='top10'></a>", unsafe_allow_html=True)
-
-    # # Placeholder for Lineplot for Songs by Artist
-    # st.write("### Compare Top 10 Most Played Artists by Month")
-
-    # ### Create a heatmap to visualize the rankings of artists over time
-    # # Get the list of unique months from the columns of songs_df
-    # date_columns = songs_df.columns[2:]  # Assuming date columns start from index 2
-    # unique_months = pd.to_datetime(date_columns).to_period("M").unique()
-
-    # # Allow the user to select a month from the dropdown menu
-    # selected_month = st.selectbox("Select a month:", unique_months)
-
-    # # Filter data for the selected month
-    # selected_month_data = songs_df[
-    #     date_columns[pd.to_datetime(date_columns).to_period("M") == selected_month]
-    # ]
-
-    # # Get the top 10 ranked songs in the selected month
-    # top_10_songs = selected_month_data.mean().sort_values().index[:10]
-
-    # # Filter data for the top 10 ranked songs
-    # selected_month_top_10 = selected_month_data[top_10_songs]
-
-    # # Transpose the DataFrame for proper orientation
-    # selected_month_top_10 = selected_month_top_10.T
-
-    # # Create a heatmap using Plotly Express
-    # fig = px.imshow(
-    #     selected_month_top_10,
-    #     labels={"color": "Rank"},
-    #     x=selected_month_top_10.index,
-    #     y=selected_month_top_10.columns,
-    #     title=f"Top 10 Songs in {selected_month}",
-    #     color_continuous_scale="Viridis",
-    # )
-
-    # # Make each vertical line wider
-    # fig.update_traces(dx=0.5)
-
-    # st.plotly_chart(fig)
-
-    # %%
+    ################################# ALL SONGS BY AN ARTIST #################################
     # Add an HTML anchor to link to this section
     st.markdown("<a name='allsongs'></a>", unsafe_allow_html=True)
 
@@ -407,6 +446,20 @@ def main():
 
     # Display the chart using st.plotly_chart
     st.plotly_chart(fig)
+    ############################## LONGEST RANKING SONG  ####################################################
+    # Add an HTML anchor to link to this section
+    st.markdown("<a name='songbyappearance'></a>", unsafe_allow_html=True)
+
+    # Placeholder for Lineplot for Songs by Artist
+    st.write("### Present The Longest-Ranking Songs")
+
+    date_list = songs_df.columns[2:]
+
+    # Use select_date_range function with unique keys
+    selected_start_date, selected_end_date = select_date_range(date_list)
+
+    # Display the table
+    display_longest_ranking_songs(songs_df, selected_start_date, selected_end_date)
 
     ###################################SIDEBAR FEATURES###########################################
     # Display an image at the top of the sidebar
@@ -422,6 +475,7 @@ def main():
     - [Compare Song Rankings](#multisong)
     - [Top Artists by # of Entries](#topartists)
     - [All Songs by Artist](#allsongs)
+    - [Longest Ranking Song](#songbyappearance)
     """
     )
 
