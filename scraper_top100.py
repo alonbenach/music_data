@@ -3,7 +3,7 @@ import billboard
 from datetime import date
 import pandas as pd
 
-start_year = 2000
+start_year = 1990
 end_year = 2022
 
 year_charts = {}  # Dictionary to hold data for all dates
