@@ -132,3 +132,6 @@ genre_df = genre_df.drop_duplicates(subset=["Artist"], keep="first")
 # %%
 print(genre_df["Artist"].count() - genre_df["Genre"].count(), "songs have null genre.")
 # %%
+genre_df.to_excel("genre_df.xlsx", index=False)
+
+# %%
