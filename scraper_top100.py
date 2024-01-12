@@ -126,12 +126,92 @@ for index, row in songs_df.iterrows():
 # Display the updated DataFrame
 print(songs_df["Genre"])
 # %%
+# Create a df of artists and genre and drop duplicates
 genre_df = songs_df[["Artist", "Genre"]]
 genre_df = genre_df.drop_duplicates(subset=["Artist"], keep="first")
 
 # %%
+# Compare artists with existing genre to missing
 print(genre_df["Artist"].count() - genre_df["Genre"].count(), "songs have null genre.")
 # %%
+# Save genre_df to excel
 genre_df.to_excel("genre_df.xlsx", index=False)
 
+# %%
+# Load the data
+excel_file_name = "genre_df.xlsx"
+# Read the Excel file into a dictionary of dataframes
+genre_df = pd.read_excel(excel_file_name)
+
+# %%
+# Create a binary dataframe of genre
+# List of genres
+genre_list = [
+    "rock",
+    "pop",
+    "jazz",
+    "fusion",
+    "soul",
+    "r&b",
+    "folk",
+    "hip hop",
+    "dance",
+    "hard rock",
+    "soft rock",
+    "metal",
+    "glam",
+    "new wave",
+    "swing",
+    "blues",
+    "funk",
+    "progressive",
+    "country",
+    "reggae",
+    "brit",
+    "electronic",
+    "psychedelic",
+    "psychedelia",
+    "new wave",
+    "rap",
+    "latin",
+    "freestyle",
+    "synth",
+    "gothic",
+    "alternative",
+    "house",
+    "christian",
+    "salsa",
+    "indie",
+    "gospel",
+    "christmas",
+    "children",
+    "edm",
+]
+
+
+# Function to check if a genre exists in the 'Genre' column
+def check_genre(genre, genre_column):
+    if genre_column is not None and isinstance(genre_column, str):
+        return int(genre.lower() in genre_column.lower())
+    return 0
+
+
+# Create columns for each genre based on 'Genre' column
+for genre in genre_list:
+    genre_df[genre] = genre_df["Genre"].apply(lambda x: check_genre(genre, x))
+
+# Combine and replace columns "psychedelia" and "psychefelic"
+genre_df["psychedelic"] = genre_df[["psychedelia", "psychedelic"]].max(axis=1)
+
+# Drop the "psychedelia" column
+genre_df = genre_df.drop(columns=["psychedelia"], axis=1)
+genre_list.remove("psychedelia")
+
+# Display the DataFrame with genre columns as 0/1
+print(genre_df[["Artist"] + genre_list])
+
+
+# %%
+# Save genre_df to excel after changes
+genre_df.to_excel("genre_df.xlsx", index=False)
 # %%
