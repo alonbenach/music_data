@@ -13,6 +13,9 @@ import numpy as np
 excel_file_name = "songs_df.xlsx"
 # Read the Excel file into a dictionary of dataframes
 songs_df = pd.read_excel(excel_file_name)
+excel_file_name = "genre_df.xlsx"
+# Read the Excel file into a dictionary of dataframes
+genre_df = pd.read_excel(excel_file_name)
 
 #######################################################################################
 
@@ -90,9 +93,11 @@ def select_date_range(date_list):
     return start_date, end_date
 
 
-def display_longest_ranking_songs(songs_df, selected_start_date, selected_end_date):
+def display_longest_ranking_songs(
+    filtered_songs_df, selected_start_date, selected_end_date
+):
     # Extract the columns corresponding to the selected dates
-    selected_columns = songs_df.loc[
+    selected_columns = filtered_songs_df.loc[
         :, str(selected_start_date) : str(selected_end_date)
     ]
 
@@ -106,13 +111,13 @@ def display_longest_ranking_songs(songs_df, selected_start_date, selected_end_da
     # st.write(songs_df[columns_to_display])
 
     # Aggregate non-NA values and count
-    non_na_counts = songs_df[columns_to_display].T.count()
+    non_na_counts = filtered_songs_df[columns_to_display].T.count()
 
     # Select top 10 songs with the most non-NA values
     top_10_songs = non_na_counts.sort_values(ascending=False).head(10)
 
     # Extract song and artist names for the top 10 songs
-    top_10_song_artist = songs_df.loc[top_10_songs.index, ["Song", "Artist"]]
+    top_10_song_artist = filtered_songs_df.loc[top_10_songs.index, ["Song", "Artist"]]
 
     # Combine Song and Artist columns
     top_10_song_artist["Combined"] = (
@@ -135,6 +140,24 @@ def display_longest_ranking_songs(songs_df, selected_start_date, selected_end_da
 
     # Show the chart using Streamlit's Altair component
     st.altair_chart(chart, use_container_width=True)
+
+
+def filter_songs_by_genre(selected_genres, genre_df, songs_df):
+    if not selected_genres:
+        # If no genres are selected, return the original songs_df
+        return songs_df
+    # Filter genre_df based on selected_genres
+    filtered_genre_df = genre_df[["Artist"] + selected_genres]
+
+    # Get the list of artists associated with the selected genres
+    filtered_artists = filtered_genre_df[
+        filtered_genre_df[selected_genres].sum(axis=1) > 0
+    ]["Artist"].tolist()
+
+    # Subset songs_df based on the filtered artists
+    filtered_songs_df = songs_df[songs_df["Artist"].isin(filtered_artists)]
+
+    return filtered_songs_df
 
 
 # %%
@@ -173,14 +196,29 @@ def main():
 
     #######################################################################################
     # Add an HTML anchor to link to this section
+    st.markdown("<a name='genre_filter'></a>", unsafe_allow_html=True)
+
+    # Placeholder for Lineplot for Songs by Artist
+    st.write("### Filter the Entire Dashboard by Selected Genres")
+
+    # Add a multiple-choice selector for genres
+    selected_genres = st.multiselect("Select genres:", genre_df.columns[2:].tolist())
+
+    # Filter songs_df based on selected genres
+    filtered_songs_df = filter_songs_by_genre(selected_genres, genre_df, songs_df)
+    #######################################################################################
+
+    # Add an HTML anchor to link to this section
     st.markdown("<a name='charts'></a>", unsafe_allow_html=True)
 
     # Placeholder for Lineplot for Songs by Artist
     st.write("### Present the Weekly Chart by a Selected Date")
 
-    date_list = songs_df.columns[2:]
+    date_list = filtered_songs_df.columns[2:]
     selected_date = select_date_from_list(date_list)
-    selected_data = songs_df[["Artist", "Song", selected_date.strftime("%Y-%m-%d")]]
+    selected_data = filtered_songs_df[
+        ["Artist", "Song", selected_date.strftime("%Y-%m-%d")]
+    ]
 
     # Filter the data based on the selected date
     selected_data = selected_data.dropna(subset=[selected_date.strftime("%Y-%m-%d")])
@@ -202,10 +240,10 @@ def main():
     st.write("### Present the Ranking of a Song over Time")
 
     # Allow the user to select a song from the dropdown menu
-    selected_song = st.selectbox("Select a song:", songs_df["Song"].unique())
+    selected_song = st.selectbox("Select a song:", filtered_songs_df["Song"].unique())
 
     # Filter data for the selected song
-    selected_song_data = songs_df[songs_df["Song"] == selected_song]
+    selected_song_data = filtered_songs_df[filtered_songs_df["Song"] == selected_song]
 
     # Get the date columns and the corresponding ranks for the selected song
     date_columns = selected_song_data.columns[
@@ -245,6 +283,9 @@ def main():
         labels={"Date": "Date", "Rank": "Rank"},
     )
 
+    # Set y-axis to be reversed
+    fig.update_yaxes(autorange="reversed")
+
     # Filter the data to get only existing (non-NA) ranks for x-axis ticks
     existing_ranks = plot_data.dropna(subset=["Rank"])
     existing_dates = existing_ranks["Date"]
@@ -267,18 +308,18 @@ def main():
     # Placeholder for Lineplot for Songs by Artist
     st.write("### Compare the Rankings of Multiple Songs over Time")
 
-    default_songs = songs_df["Song"].unique()[
+    default_songs = filtered_songs_df["Song"].unique()[
         :3
     ]  # Get the first three songs as default placeholders
 
     # Allow the user to select multiple songs from the dropdown menu
     selected_songs = st.multiselect(
-        "Select songs:", songs_df["Song"].unique(), default=default_songs
+        "Select songs:", filtered_songs_df["Song"].unique(), default=default_songs
     )
 
     if len(selected_songs) > 0:
         # Filter data for the selected songs
-        selected_songs_data = songs_df[songs_df["Song"].isin(selected_songs)]
+        selected_songs_data = filtered_songs_df[songs_df["Song"].isin(selected_songs)]
 
         # Initialize variables to track the first and last existing observations
         min_date = pd.Timestamp.max
@@ -336,6 +377,9 @@ def main():
             labels={"Date": "Date", "Rank": "Rank"},
         )
 
+        # Set y-axis to be reversed
+        fig.update_yaxes(autorange="reversed")
+
         # Customize x-axis tick labels to show every second month
         month_ticks = pd.date_range(start=min_date, end=max_date, freq="2M")
         fig.update_xaxes(
@@ -361,7 +405,7 @@ def main():
     artist_appearances = defaultdict(int)
 
     # Iterate through each song to count artist appearances
-    for song, artist in zip(songs_df["Song"], songs_df["Artist"]):
+    for song, artist in zip(filtered_songs_df["Song"], filtered_songs_df["Artist"]):
         # Extract individual artists from the song based on separators
         artists = extract_artists(artist)
 
@@ -397,8 +441,8 @@ def main():
 
     ### Create a lineplot for all songs by artist
     # Expand the DataFrame to include rows for each artist
-    expanded_artists = songs_df.assign(
-        Artist=songs_df["Artist"].apply(extract_artists)
+    expanded_artists = filtered_songs_df.assign(
+        Artist=filtered_songs_df["Artist"].apply(extract_artists)
     ).explode("Artist")
 
     # Get the list of unique artists from the expanded DataFrame
@@ -441,6 +485,9 @@ def main():
         labels={"Date": "Date", "Rank": "Rank", "Song": "Song"},
     )
 
+    # Set y-axis to be reversed
+    fig.update_yaxes(autorange="reversed")
+
     # Set x-axis range to the first and last non-NA dates
     fig.update_xaxes(range=[first_date, last_date])
 
@@ -453,13 +500,15 @@ def main():
     # Placeholder for Lineplot for Songs by Artist
     st.write("### Present The Longest-Ranking Songs")
 
-    date_list = songs_df.columns[2:]
+    date_list = filtered_songs_df.columns[2:]
 
     # Use select_date_range function with unique keys
     selected_start_date, selected_end_date = select_date_range(date_list)
 
     # Display the table
-    display_longest_ranking_songs(songs_df, selected_start_date, selected_end_date)
+    display_longest_ranking_songs(
+        filtered_songs_df, selected_start_date, selected_end_date
+    )
 
     ###################################SIDEBAR FEATURES###########################################
     # Display an image at the top of the sidebar
@@ -470,6 +519,7 @@ def main():
         """
     ### Navigation
     - [Top](#header)
+    - [Genre Selector](#genre_filter)
     - [Charts](#charts)
     - [One Song Rankings](#onesong)
     - [Compare Song Rankings](#multisong)
