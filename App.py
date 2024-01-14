@@ -284,7 +284,7 @@ def main():
     )
 
     # Set y-axis to be reversed
-    fig.update_yaxes(autorange="reversed")
+    fig.update_yaxes(autorange="reversed", scaleanchor="x", scaleratio=1)
 
     # Filter the data to get only existing (non-NA) ranks for x-axis ticks
     existing_ranks = plot_data.dropna(subset=["Rank"])
@@ -296,6 +296,11 @@ def main():
         tickformat="%Y-%m-%d",
         tickangle=45,
         title_text="Date",
+    )
+    # Manually set y-axis tick labels to replace 0 with 1
+    fig.update_yaxes(
+        tickvals=[1, 20, 40, 60, 80, 100],  # Adjust tick values as needed
+        ticktext=[1, 20, 40, 60, 80, 100],  # Replace 0 with 1 in tick labels
     )
 
     # Display the chart using st.plotly_chart
@@ -388,7 +393,11 @@ def main():
 
         # Set the x-axis range based on the first and last existing observation dates within selected songs
         fig.update_xaxes(range=[min_date, max_date])
-
+        # Manually set y-axis tick labels to replace 0 with 1
+        fig.update_yaxes(
+            tickvals=[1, 20, 40, 60, 80, 100],  # Adjust tick values as needed
+            ticktext=[1, 20, 40, 60, 80, 100],  # Replace 0 with 1 in tick labels
+        )
         # Display the chart using st.plotly_chart
         st.plotly_chart(fig)
     else:
@@ -491,6 +500,11 @@ def main():
     # Set x-axis range to the first and last non-NA dates
     fig.update_xaxes(range=[first_date, last_date])
 
+    # Manually set y-axis tick labels to replace 0 with 1
+    fig.update_yaxes(
+        tickvals=[1, 20, 40, 60, 80, 100],  # Adjust tick values as needed
+        ticktext=[1, 20, 40, 60, 80, 100],  # Replace 0 with 1 in tick labels
+    )
     # Display the chart using st.plotly_chart
     st.plotly_chart(fig)
     ############################## LONGEST RANKING SONG  ####################################################
