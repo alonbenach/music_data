@@ -1,2 +1,2 @@
 # music_data
-A small data app to supply data about music
+A small app to supply data about music
