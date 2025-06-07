@@ -324,7 +324,7 @@ def main():
 
     if len(selected_songs) > 0:
         # Filter data for the selected songs
-        selected_songs_data = filtered_songs_df[songs_df["Song"].isin(selected_songs)]
+        selected_songs_data = filtered_songs_df[filtered_songs_df["Song"].isin(selected_songs)]
 
         # Initialize variables to track the first and last existing observations
         min_date = pd.Timestamp.max
